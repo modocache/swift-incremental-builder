@@ -16,11 +16,14 @@ Then you can use this project to try building things incremetnally:
 
 ```
 $ git clone https://github.com/modoache/swift-incremental-builder.git
-$ python swift-incremental-builder \
-    --swift-root-build-dir build \
-    /path/to/foo.swift \
-    /path/to/main.swift \
-    --swiftc-option "-driver-show-incremental"
+$ cd swift-incremental-builder/fixtures/executable
+$ python ../../main.py \
+    --swift-root-build-dir /path/to/swift/build \
+    *.swift \
+    --swiftc-option="-driver-show-incremental" \
+    --link executable
+$ ./out/Main
+x: 10
 ```
 
 See the `--help` output for details:
@@ -101,9 +104,10 @@ Compilation options:
 Linking options:
   Options for linking the input files.
 
-  --link                Whether to link the Swift module produced by the
-                        incremental compilation command into an executable.
-                        False by default.
+  --link {executable,dylib}
+                        If specified, link the Swift module produced by the
+                        incremental compilation command into an "executable"
+                        or a "dylib".
   --clang CLANG         The Clang executable to use in order to link the Swift
                         module into an executable. If this option is not
                         specified, this script attempts to find a Clang

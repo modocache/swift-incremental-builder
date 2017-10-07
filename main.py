@@ -47,37 +47,6 @@ def _get_default_clang_path(build_dir):
     return os.path.join(build_dir, 'llvm-macosx-x86_64', 'bin', 'clang')
 
 
-def _generate_swiftmodule_command(swiftc,
-                                  sdk,
-                                  target,
-                                  input_files,
-                                  output_file_map,
-                                  output_module_name,
-                                  swiftc_options):
-    cmd = [
-        swiftc, '-incremental',
-        '-sdk', sdk,
-        '-target', target,
-        '-Onone',
-        '-Xfrontend', '-serialize-debugging-options',
-        '-c',
-        '-j8',
-    ] + input_files + [
-        '-output-file-map', output_file_map,
-        '-save-temps',
-        '-serialize-diagnostics',
-        '-emit-dependencies',
-        '-emit-module',
-        '-emit-module-path', '{}.swiftmodule'.format(output_module_name),
-        '-emit-objc-header',
-        '-emit-objc-header-path', '{}-Swift.h'.format(output_module_name),
-        '-module-name', output_module_name,
-    ]
-    for option in swiftc_options:
-        cmd += [option]
-    return cmd
-
-
 def _run(cmd, env=os.environ.copy()):
     print('env TMPDIR={} '.format(env['TMPDIR']) + ' '.join(cmd))
     subprocess.check_call(cmd, env=env)
@@ -182,10 +151,9 @@ def main():
     )
     link_argument_group.add_argument(
         '--link',
-        help='Whether to link the Swift module produced by the incremental '
-             'compilation command into an executable. %(default)s by default.',
-        action='store_true',
-        default=False,
+        help='If specified, link the Swift module produced by the incremental '
+             'compilation command into an "executable" or a "dylib".',
+        choices=['executable', 'dylib'],
     )
     link_argument_group.add_argument(
         '--clang',
@@ -281,6 +249,9 @@ def main():
     swiftc = args.swiftc
     if not swiftc:
         swiftc = os.path.join(swift_build_dir, 'bin', 'swiftc')
+    swiftmodule = os.path.join(
+        args.outdir, '{}.swiftmodule'.format(args.output_module_name),
+    )
     cmd = [
         swiftc, '-incremental',
         '-sdk', swift_build_dir,
@@ -295,9 +266,7 @@ def main():
         '-serialize-diagnostics',
         '-emit-dependencies',
         '-emit-module',
-        '-emit-module-path', '{}.swiftmodule'.format(args.output_module_name),
-        '-emit-objc-header',
-        '-emit-objc-header-path', '{}-Swift.h'.format(args.output_module_name),
+        '-emit-module-path', swiftmodule,
         '-module-name', args.output_module_name,
     ]
     for option in args.swiftc_options:
@@ -321,15 +290,20 @@ def main():
             args.clang,
             '-arch', 'x86_64',
             '-isysroot', isysroot,
-        ] + object_files + [
+        ]
+        if args.link == 'dylib':
+            cmd += ['-dynamiclib']
+        cmd += object_files + [
             '-L{}'.format(swift_static_sdk_path),
             '-lc++',
             '-framework', 'Foundation',
-            '-Xlinker', '-add_ast_path',
-            '-Xlinker', '{}.swiftmodule'.format(args.output_module_name),
+            '-Xlinker', '-add_ast_path', '-Xlinker', swiftmodule,
             '-Xlinker', '-dependency_info',
-            '-Xlinker', '{}_dependency_info.dat'.format(args.output_module_name),
-            '-o', args.output_module_name,
+            '-Xlinker', os.path.join(
+                args.outdir,
+                '{}_dependency_info.dat'.format(args.output_module_name),
+            ),
+            '-o', os.path.join(args.outdir, args.output_module_name),
         ]
         _run(cmd, env)
 
