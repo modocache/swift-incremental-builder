@@ -26,6 +26,15 @@ $ ./out/Main
 x: 10
 ```
 
+Or try the examples, which invoke swift-incremental-builder with the requisite
+arguments to produce executables and more:
+
+```
+$ bash fixtures/executable/build.sh
+$ bash fixtures/library/build.sh
+$ bash fixtures/executable-with-library/build.sh
+```
+
 See the `--help` output for details:
 
 ```
