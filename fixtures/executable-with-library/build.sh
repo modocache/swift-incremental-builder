@@ -11,11 +11,9 @@ python ../../main.py \
     --tmpdir foo-tmp \
     --outdir foo-out \
     --swiftc-option="-emit-library" \
+    --swiftc-option="-o" \
+    --swiftc-option="foo-out/libFoo.dylib"
     $*
-
-mv \
-    libFoo.dylib \
-    foo-out/libFoo.dylib
 
 python ../../main.py \
     main.swift \
