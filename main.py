@@ -48,7 +48,7 @@ def _get_default_clang_path(build_dir):
 
 
 def _run(cmd, env=os.environ.copy()):
-    print('env TMPDIR={} '.format(env['TMPDIR']) + ' '.join(cmd))
+    print('env TMPDIR={} '.format(env['TMPDIR']) + ' '.join(cmd) + '\n')
     subprocess.check_call(cmd, env=env)
 
 
@@ -140,7 +140,7 @@ def main():
              'performing an incremental compilation. For example, '
              '"-driver-show-incremental" prints information about the steps '
              'the compiler is taking when performing an incremental build.',
-        nargs='*',
+        action='append',
         default=[],
         dest='swiftc_options',
     )
@@ -194,11 +194,20 @@ def main():
              'for example "{}".'.format(
                  _get_default_swift_static_sdk_path("/path/to/build/")),
     )
+    link_argument_group.add_argument(
+        '--link-option',
+        help='Additional options to pass to the linker when linking.',
+        action='append',
+        default=[],
+        dest='linker_options',
+    )
 
     args = parser.parse_args()
 
     env = os.environ.copy()
     env['TMPDIR'] = args.tmpdir
+    env['DEVELOPER_DIR'] = '/Applications/Xcode_9.0.0_fb.app/Contents/Developer'
+    env['SDKROOT'] = '/Applications/Xcode_9.0.0_fb.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.13.sdk'
 
     # The Swift compiler asserts when it attempts to create temporary or
     # diagnostics files in directories that don't exist.
@@ -254,7 +263,6 @@ def main():
     )
     cmd = [
         swiftc, '-incremental',
-        '-sdk', swift_build_dir,
         '-target', args.target,
         '-Onone',
         '-Xfrontend', '-serialize-debugging-options',
@@ -268,6 +276,7 @@ def main():
         '-emit-module',
         '-emit-module-path', swiftmodule,
         '-module-name', args.output_module_name,
+        '-module-link-name', args.output_module_name,
     ]
     for option in args.swiftc_options:
         cmd += [option]
@@ -305,6 +314,8 @@ def main():
             ),
             '-o', os.path.join(args.outdir, args.output_module_name),
         ]
+        for option in args.linker_options:
+            cmd += [option]
         _run(cmd, env)
 
 
